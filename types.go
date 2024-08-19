@@ -12,31 +12,30 @@ type GraphQLResponse struct {
 
 type Data struct {
 	DistributePayoutsEvents []DistributePayoutsEvent `json:"distributePayoutsEvents"`
+	PayEvents               []PayEvent               `json:"payEvents"`
 }
 
 type DistributePayoutsEvent struct {
-	Amount                        *big.Int            `json:"amount"`
-	Fee                           *big.Int            `json:"fee"`
-	ProjectID                     int                 `json:"projectId"`
-	BeneficiaryDistributionAmount *big.Int            `json:"beneficiaryDistributionAmount"`
-	Beneficiary                   string              `json:"beneficiary"`
-	SplitDistributions            []SplitDistribution `json:"splitDistributions"`
-	TxHash                        string              `json:"txHash"`
+	DistributedAmount  *big.Int            `json:"distributedAmount"`
+	SplitDistributions []SplitDistribution `json:"splitDistributions"`
+	TxHash             string              `json:"txHash"`
+}
+
+type PayEvent struct {
+	ProjectID int      `json:"projectId"`
+	Amount    *big.Int `json:"amount"`
 }
 
 type SplitDistribution struct {
-	Amount         *big.Int `json:"amount"`
-	Beneficiary    string   `json:"beneficiary"`
-	SplitProjectID int      `json:"splitProjectId"`
+	SplitProjectID int   `json:"splitProjectId"`
+	Percent        int64 `json:"percent"`
 }
 
 // Custom UnmarshalJSON for DistributePayoutsEvent to handle big.Int
 func (d *DistributePayoutsEvent) UnmarshalJSON(data []byte) error {
 	type Alias DistributePayoutsEvent
 	aux := &struct {
-		Amount                        string `json:"amount"`
-		Fee                           string `json:"fee"`
-		BeneficiaryDistributionAmount string `json:"beneficiaryDistributionAmount"`
+		DistributedAmount string `json:"distributedAmount"`
 		*Alias
 	}{
 		Alias: (*Alias)(d),
@@ -45,32 +44,25 @@ func (d *DistributePayoutsEvent) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	var success bool
-	if d.Amount, success = new(big.Int).SetString(aux.Amount, 10); !success {
-		return fmt.Errorf("failed to parse amount: %s", aux.Amount)
-	}
-	if d.Fee, success = new(big.Int).SetString(aux.Fee, 10); !success {
-		return fmt.Errorf("failed to parse fee: %s", aux.Fee)
-	}
-	if d.BeneficiaryDistributionAmount, success = new(big.Int).SetString(aux.BeneficiaryDistributionAmount, 10); !success {
-		return fmt.Errorf("failed to parse beneficiaryDistributionAmount: %s", aux.BeneficiaryDistributionAmount)
+	if d.DistributedAmount, success = new(big.Int).SetString(aux.DistributedAmount, 10); !success {
+		return fmt.Errorf("failed to parse amount: %s", aux.DistributedAmount)
 	}
 	return nil
 }
 
-// Custom UnmarshalJSON for SplitDistribution to handle big.Int
-func (s *SplitDistribution) UnmarshalJSON(data []byte) error {
-	type Alias SplitDistribution
+func (p *PayEvent) UnmarshalJSON(data []byte) error {
+	type Alias PayEvent
 	aux := &struct {
 		Amount string `json:"amount"`
 		*Alias
 	}{
-		Alias: (*Alias)(s),
+		Alias: (*Alias)(p),
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
 	var success bool
-	if s.Amount, success = new(big.Int).SetString(aux.Amount, 10); !success {
+	if p.Amount, success = new(big.Int).SetString(aux.Amount, 10); !success {
 		return fmt.Errorf("failed to parse amount: %s", aux.Amount)
 	}
 	return nil
